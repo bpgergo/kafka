@@ -1642,6 +1642,7 @@ project(':connect:mirror') {
     compile libs.slf4jApi
 
     testCompile libs.junit
+    testCompile project(':clients').sourceSets.test.output
 
     testRuntime libs.slf4jlog4j
   }
@@ -1676,6 +1677,7 @@ project(':connect:mirror-client') {
     compile libs.slf4jApi
 
     testCompile libs.junit
+    testCompile project(':clients').sourceSets.test.output
 
     testRuntime libs.slf4jlog4j
   }
