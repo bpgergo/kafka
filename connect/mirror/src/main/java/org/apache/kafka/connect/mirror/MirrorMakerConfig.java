@@ -51,7 +51,7 @@ public class MirrorMakerConfig extends AbstractConfig {
         .withClientSaslSupport();
 
     public MirrorMakerConfig(Map<?, ?> props) {
-        super(CONFIG_DEF, props, true);
+        super(CONFIG_DEF, props, false);
     }
 
     List<String> clusters() {
@@ -104,7 +104,7 @@ public class MirrorMakerConfig extends AbstractConfig {
         props.putAll(sharedClientConfigs());
 
         // add any other top-level properties
-        props.putAll(connectorConfigs());
+        props.putAll(originalsStrings());
  
         // override with cluster-level properties
         props.putAll(originalsWithPrefix(sourceAndTarget.source() + "."));
@@ -166,17 +166,5 @@ public class MirrorMakerConfig extends AbstractConfig {
             }
         }
         return clientConfig;
-    }
-
-    private Map<String, String> connectorConfigs() {
-        Map<String, String> connectorConfig = new HashMap<>();
-        Map<String, String> values = originalsStrings();
-        for (String k : MirrorConnectorConfig.CONNECTOR_CONFIG_DEF.names()) {
-            String v = values.get(k);
-            if (v != null) {
-                connectorConfig.put(k, v);
-            }
-        }
-        return connectorConfig;
     }
 }
