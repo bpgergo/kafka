@@ -53,4 +53,14 @@ public class DefaultReplicationPolicy implements ReplicationPolicy, Configurable
             return parts[0];
         }
     }
+
+    @Override
+    public String upstreamTopic(String topic) {
+        String source = topicSource(topic);
+        if (source == null) {
+            return null;
+        } else {
+            return topic.substring(source.length() + separator.length());
+        }
+    }
 }
