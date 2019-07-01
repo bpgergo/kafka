@@ -22,6 +22,7 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
+import org.apache.kafka.common.utils.Utils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -96,11 +97,31 @@ public class MirrorCheckpointTask extends SourceTask {
         cleanup();
     }
 
+    @Override
+    public String toString() {
+        return "MirrorCheckpointTask{" +
+            "sourceAdminClient=" + sourceAdminClient +
+            ", sourceClusterAlias='" + sourceClusterAlias + '\'' +
+            ", targetClusterAlias='" + targetClusterAlias + '\'' +
+            ", checkpointsTopic='" + checkpointsTopic + '\'' +
+            ", interval=" + interval +
+            ", pollTimeout=" + pollTimeout +
+            ", topicFilter=" + topicFilter +
+            ", consumerGroups=" + consumerGroups +
+            ", replicationPolicy=" + replicationPolicy +
+            ", offsetSyncStore=" + offsetSyncStore +
+            ", stopped=" + stopped +
+            ", lock=" + lock +
+            ", metrics=" + metrics +
+            '}';
+    }
+
     private void cleanup() {
+        log.info("Stopping {}", this.toString());
         lock.lock();
         try {
-            offsetSyncStore.close();
-            sourceAdminClient.close();
+            Utils.closeQuietly(offsetSyncStore, "offsetSyncStore");
+            Utils.closeQuietly(sourceAdminClient, "sourceAdminClient");
         } finally {
             lock.unlock();
         }

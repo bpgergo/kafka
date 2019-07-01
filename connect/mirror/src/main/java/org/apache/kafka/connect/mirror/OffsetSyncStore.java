@@ -20,6 +20,7 @@ import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.serialization.ByteArrayDeserializer;
+import org.apache.kafka.common.utils.Utils;
 
 import java.util.Map;
 import java.util.HashMap;
@@ -27,7 +28,7 @@ import java.util.Collections;
 import java.time.Duration;
 
 /** Used internally by MirrorMaker. Stores offset syncs and performs offset translation. */
-class OffsetSyncStore {
+class OffsetSyncStore implements AutoCloseable {
     private KafkaConsumer<byte[], byte[]> consumer;
     private Map<TopicPartition, OffsetSync> offsetSyncs = new HashMap<>();
     private TopicPartition offsetSyncTopicPartition;
@@ -66,7 +67,8 @@ class OffsetSyncStore {
     }
 
     private synchronized void cleanup() {
-        consumer.close();
+        log.info("Stopping {}", this.toString());
+        Utils.closeQuietly(consumer, "consumer");
     }
 
     protected void handleRecord(ConsumerRecord<byte[], byte[]> record) {
@@ -79,4 +81,14 @@ class OffsetSyncStore {
         return offsetSyncs.computeIfAbsent(topicPartition, x -> new OffsetSync(topicPartition,
             -1, -1));
     }
-}
+
+    @Override
+    public String toString() {
+        return "OffsetSyncStore{" +
+            "consumer=" + consumer +
+            ", offsetSyncs=" + offsetSyncs +
+            ", offsetSyncTopicPartition=" + offsetSyncTopicPartition +
+            '}';
+    }
+
+    }

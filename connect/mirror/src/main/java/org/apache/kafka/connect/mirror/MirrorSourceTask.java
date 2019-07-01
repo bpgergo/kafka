@@ -29,6 +29,7 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.header.Header;
+import org.apache.kafka.common.utils.Utils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -100,21 +101,39 @@ public class MirrorSourceTask extends SourceTask {
     }
 
     @Override
+    public String toString() {
+        return "MirrorSourceTask{" +
+            "consumer=" + consumer +
+            ", offsetProducer=" + offsetProducer +
+            ", sourceClusterAlias='" + sourceClusterAlias + '\'' +
+            ", offsetSyncsTopic='" + offsetSyncsTopic + '\'' +
+            ", pollTimeout=" + pollTimeout +
+            ", maxOffsetLag=" + maxOffsetLag +
+            ", partitionStates=" + partitionStates +
+            ", replicationPolicy=" + replicationPolicy +
+            ", metrics=" + metrics +
+            ", lock=" + lock +
+            ", outstandingOffsetSyncs=" + outstandingOffsetSyncs +
+            '}';
+    }
+
+    @Override
     public void stop() {
         // TODO: cleanup off-thread to prevent blocking during task reconfiguration
         cleanup();
     }
 
     private void cleanup() {
+        log.info("Stopping {}", this.toString());
         lock.lock();
         try {
-            consumer.close();
+            Utils.closeQuietly(consumer, "consumer");
+            Utils.closeQuietly(offsetProducer, "offsetProducer");
             // re-use the poll-timeout to approximate round-trip time
             if (!outstandingOffsetSyncs.tryAcquire(MAX_OUTSTANDING_OFFSET_SYNCS, 2 * pollTimeout.toMillis(),
-                    TimeUnit.MILLISECONDS)) {
+                TimeUnit.MILLISECONDS)) {
                 log.warn("Timed out waiting for outstanding offset syncs.");
             }
-            offsetProducer.close();
         } catch (InterruptedException e) {
             log.info("Interrupted waiting for outstanding offset syncs.");
         } finally {

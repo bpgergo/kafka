@@ -22,6 +22,7 @@ import org.apache.kafka.connect.util.ConnectorUtils;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.ConsumerGroupListing;
+import org.apache.kafka.common.utils.Utils;
 
 import java.util.Map;
 import java.util.List;
@@ -69,13 +70,29 @@ public class MirrorCheckpointConnector extends SourceConnector {
     }
 
     @Override
+    public String toString() {
+        return "MirrorCheckpointConnector{" +
+            "scheduler=" + scheduler +
+            ", config=" + config +
+            ", groupFilter=" + groupFilter +
+            ", sourceAdminClient=" + sourceAdminClient +
+            ", replicationPolicy=" + replicationPolicy +
+            ", sourceAndTarget=" + sourceAndTarget +
+            ", connectorName='" + connectorName + '\'' +
+            ", knownConsumerGroups=" + knownConsumerGroups +
+            '}';
+    }
+
+    @Override
     public void stop() {
+        log.info("Stopping {}", this.toString());
         if (!config.enabled()) {
+            log.info("Not enabled to stop {}", this.toString());
             return;
         }
         scheduler.shutdown();
         synchronized (this) {
-            sourceAdminClient.close();
+            Utils.closeQuietly(sourceAdminClient, "sourceAdminClient");
         } 
     }
 

@@ -30,6 +30,7 @@ import org.apache.kafka.common.resource.ResourcePatternFilter;
 import org.apache.kafka.common.resource.PatternType;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.InvalidPartitionsException;
+import org.apache.kafka.common.utils.Utils;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.TopicDescription;
 import org.apache.kafka.clients.admin.Config;
@@ -111,14 +112,34 @@ public class MirrorSourceConnector extends SourceConnector {
     }
 
     @Override
+    public String toString() {
+        return "MirrorSourceConnector{" +
+            "scheduler=" + scheduler +
+            ", config=" + config +
+            ", sourceAndTarget=" + sourceAndTarget +
+            ", connectorName='" + connectorName + '\'' +
+            ", topicFilter=" + topicFilter +
+            ", configPropertyFilter=" + configPropertyFilter +
+            ", knownTopicPartitions=" + knownTopicPartitions +
+            ", knownTargetTopics=" + knownTargetTopics +
+            ", replicationPolicy=" + replicationPolicy +
+            ", replicationFactor=" + replicationFactor +
+            ", sourceAdminClient=" + sourceAdminClient +
+            ", targetAdminClient=" + targetAdminClient +
+            '}';
+    }
+
+    @Override
     public void stop() {
+        log.info("Stopping {}", this.toString());
         if (!config.enabled()) {
+            log.info("Not enabled to stop {}", this.toString());
             return;
         }
         scheduler.shutdown();
         synchronized (this) {
-            sourceAdminClient.close();
-            targetAdminClient.close();
+            Utils.closeQuietly(sourceAdminClient, "sourceAdminClient");
+            Utils.closeQuietly(targetAdminClient, "targetAdminClient");
         }
     }
 
