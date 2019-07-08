@@ -61,8 +61,8 @@ class OffsetSyncStore {
     }
 
     void close() {
-        // cleanup off-thread to prevent blocking
-        new Thread(this::cleanup, "cleaning up OffsetSyncStore").start();
+        // TODO: cleanup off-thread to prevent blocking
+        cleanup();
     }
 
     private synchronized void cleanup() {

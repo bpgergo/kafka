@@ -101,7 +101,8 @@ public class MirrorSourceTask extends SourceTask {
 
     @Override
     public void stop() {
-        new Thread(this::cleanup).start();
+        // TODO: cleanup off-thread to prevent blocking during task reconfiguration
+        cleanup();
     }
 
     private void cleanup() {
@@ -123,7 +124,7 @@ public class MirrorSourceTask extends SourceTask {
    
     @Override
     public String version() {
-        return "wip";
+        return "1";
     }
 
     @Override

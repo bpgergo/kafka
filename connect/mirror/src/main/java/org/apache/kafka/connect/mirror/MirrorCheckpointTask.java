@@ -92,7 +92,8 @@ public class MirrorCheckpointTask extends SourceTask {
     @Override
     public void stop() {
         stopped = true;
-        new Thread(this::cleanup).start();  // cleanup off-thread to prevent blocking
+        // TODO: cleanup off-thread to prevent blocking
+        cleanup();
     }
 
     private void cleanup() {
@@ -107,7 +108,7 @@ public class MirrorCheckpointTask extends SourceTask {
 
     @Override
     public String version() {
-        return "wip";
+        return "1";
     }
 
     @Override
