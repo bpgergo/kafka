@@ -75,6 +75,7 @@ public class MirrorCheckpointConnector extends SourceConnector {
         }
         scheduler.shutdown();
         synchronized (this) {
+            groupFilter.close();
             sourceAdminClient.close();
         } 
     }

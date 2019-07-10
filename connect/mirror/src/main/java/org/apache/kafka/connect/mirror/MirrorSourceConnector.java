@@ -47,6 +47,7 @@ import java.util.Collections;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.concurrent.ExecutionException;
+import java.io.Closeable;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -117,9 +118,11 @@ public class MirrorSourceConnector extends SourceConnector {
         }
         scheduler.shutdown();
         synchronized (this) {
+            topicFilter.close();
+            configPropertyFilter.close();
             sourceAdminClient.close();
             targetAdminClient.close();
-        }
+       }
     }
 
     @Override
