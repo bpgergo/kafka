@@ -63,6 +63,7 @@ public class MirrorMakerConfig extends AbstractConfig {
     private static final String CONFIG_TOPIC_CONFIG = "config.storage.topic";
     private static final String KEY_CONVERTER_CLASS_CONFIG = "key.converter";
     private static final String VALUE_CONVERTER_CLASS_CONFIG = "value.converter";
+    private static final String HEADER_CONVERTER_CLASS_CONFIG = "header.converter";
     private static final String BYTE_ARRAY_CONVERTER_CLASS =
         "org.apache.kafka.connect.converters.ByteArrayConverter";
 
