@@ -52,7 +52,7 @@ public class MirrorMakerConfigTest {
     }
 
     @Test
-    public void testFlowConfigProperties() {
+    public void testReplicationConfigProperties() {
         MirrorMakerConfig mirrorConfig = new MirrorMakerConfig(makeProps(
             "clusters", "a, b",
             "a->b.producer.client.id", "client-one",
@@ -67,6 +67,19 @@ public class MirrorMakerConfigTest {
         assertEquals("connector producer is configured",
             "client-one", connectorConfig.sourceProducerConfig().get("client.id"));
     }
+
+    @Test
+    public void testClientConfigProperties() {
+        MirrorMakerConfig mirrorConfig = new MirrorMakerConfig(makeProps(
+            "clusters", "a, b",
+            "replication.policy.separator", "__"));
+        MirrorClientConfig clientConfig = mirrorConfig.clientConfig("a");
+        assertEquals("replication.policy.separator is picked up in MirrorClientConfig",
+            "__", clientConfig.getString("replication.policy.separator"));
+        assertEquals("replication.policy.separator is honored",
+            "b__topic1", clientConfig.replicationPolicy().formatRemoteTopic("b", "topic1"));
+    }
+
 
     @Test
     public void testIncludesConnectorConfigProperties() {

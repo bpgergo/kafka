@@ -130,7 +130,15 @@ public class MirrorMakerConfig extends AbstractConfig {
       * Use to connect to a cluster based on the MirrorMaker top-level config file.
       */
     public MirrorClientConfig clientConfig(String cluster) {
-        return new MirrorClientConfig(clusterProps(cluster));
+        Map<String, String> props = new HashMap<>();
+        Map<String, String> strings = originalsStrings();
+        for (String k : MirrorClientConfig.CONFIG_DEF.names()) {
+            if (strings.containsKey(k)) {
+                props.put(k, strings.get(k));
+            }
+        }
+        props.putAll(clusterProps(cluster));
+        return new MirrorClientConfig(props);
     }
 
     // loads properties of the form cluster.x.y.z

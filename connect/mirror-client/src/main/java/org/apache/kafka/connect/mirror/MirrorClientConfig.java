@@ -43,7 +43,7 @@ public class MirrorClientConfig extends AbstractConfig {
     static final String HEARTBEATS_TOPIC = "heartbeats";
  
     MirrorClientConfig(Map<?, ?> props) {
-        super(CONFIG_DEF, props, false);
+        super(CONFIG_DEF, props, true);
     }
 
     public ReplicationPolicy replicationPolicy() {
@@ -70,7 +70,7 @@ public class MirrorClientConfig extends AbstractConfig {
             .collect(Collectors.toMap(x -> x.getKey(), x -> x.getValue()));
     }
 
-    private static final ConfigDef CONFIG_DEF = new ConfigDef()
+    static final ConfigDef CONFIG_DEF = new ConfigDef()
         .define(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG,
             Type.STRING,
             null,
