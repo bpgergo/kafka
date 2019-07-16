@@ -101,11 +101,11 @@ public class MirrorSourceTask extends SourceTask {
 
     @Override
     public void stop() {
-        // TODO: cleanup off-thread to prevent blocking during task reconfiguration
-        cleanup();
+        new Thread(() -> cleanup(lock, consumer, outstandingOffsetSyncs, pollTimeout, offsetProducer)).start();
     }
 
-    private void cleanup() {
+    private static void cleanup(ReentrantLock lock, KafkaConsumer consumer, Semaphore outstandingOffsetSyncs,
+            Duration pollTimeout, KafkaProducer offsetProducer) {
         lock.lock();
         try {
             consumer.close();

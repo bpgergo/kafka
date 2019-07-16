@@ -92,11 +92,11 @@ public class MirrorCheckpointTask extends SourceTask {
     @Override
     public void stop() {
         stopped = true;
-        // TODO: cleanup off-thread to prevent blocking
-        cleanup();
+        new Thread(() -> cleanup(lock, offsetSyncStore, sourceAdminClient)).start();
     }
 
-    private void cleanup() {
+    private static void cleanup(ReentrantLock lock, OffsetSyncStore offsetSyncStore,
+            AdminClient sourceAdminClient) {
         lock.lock();
         try {
             offsetSyncStore.close();

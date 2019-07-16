@@ -60,12 +60,7 @@ class OffsetSyncStore {
         consumer.poll(pollTimeout).forEach(this::handleRecord);
     }
 
-    void close() {
-        // TODO: cleanup off-thread to prevent blocking
-        cleanup();
-    }
-
-    private synchronized void cleanup() {
+    synchronized void close() {
         consumer.close();
     }
 
