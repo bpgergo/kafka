@@ -26,6 +26,7 @@ import java.util.HashMap;
 import java.util.Arrays;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 
 public class MirrorMakerConfigTest {
 
@@ -42,42 +43,52 @@ public class MirrorMakerConfigTest {
         MirrorMakerConfig mirrorConfig = new MirrorMakerConfig(makeProps(
             "clusters", "a, b",
             "a.bootstrap.servers", "servers-one",
-            "b.bootstrap.servers", "servers-two"));
+            "b.bootstrap.servers", "servers-two",
+            "replication.factor", "4"));
         Map<String, String> connectorProps = mirrorConfig.connectorBaseConfig(new SourceAndTarget("a", "b"),
             MirrorSourceConnector.class);
         assertEquals("source.cluster.bootstrap.servers is set",
             "servers-one", connectorProps.get("source.cluster.bootstrap.servers"));
         assertEquals("target.cluster.bootstrap.servers is set",
             "servers-two", connectorProps.get("target.cluster.bootstrap.servers"));
+        assertEquals("internal.topic.replication.factor is set based on replication.factor",
+            "4", connectorProps.get("internal.topic.replication.factor"));
     }
 
     @Test
     public void testReplicationConfigProperties() {
         MirrorMakerConfig mirrorConfig = new MirrorMakerConfig(makeProps(
             "clusters", "a, b",
-            "a->b.producer.client.id", "client-one",
             "a->b.tasks.max", "123"));
         Map<String, String> connectorProps = mirrorConfig.connectorBaseConfig(new SourceAndTarget("a", "b"),
             MirrorSourceConnector.class);
-        assertEquals("producer properties are set",
-            "client-one", connectorProps.get("producer.client.id"));
         assertEquals("connector props should include tasks.max",
             "123", connectorProps.get("tasks.max"));
-        MirrorConnectorConfig connectorConfig = new MirrorConnectorConfig(connectorProps);
-        assertEquals("connector producer is configured",
-            "client-one", connectorConfig.sourceProducerConfig().get("client.id"));
     }
 
     @Test
     public void testClientConfigProperties() {
         MirrorMakerConfig mirrorConfig = new MirrorMakerConfig(makeProps(
             "clusters", "a, b",
-            "replication.policy.separator", "__"));
+            "replication.policy.separator", "__",
+            "a.security.protocol", "PLAINTEXT", 
+            "a.producer.security.protocol", "SASL", 
+            "a.bootstrap.servers", "one:9092, two:9092", 
+            "a.xxx", "yyy"));
         MirrorClientConfig clientConfig = mirrorConfig.clientConfig("a");
         assertEquals("replication.policy.separator is picked up in MirrorClientConfig",
             "__", clientConfig.getString("replication.policy.separator"));
         assertEquals("replication.policy.separator is honored",
             "b__topic1", clientConfig.replicationPolicy().formatRemoteTopic("b", "topic1"));
+        Map<String, Object> adminProps = clientConfig.adminConfig();
+        assertEquals("client configs include boostrap.servers",
+            "one:9092, two:9092", adminProps.get("bootstrap.servers"));
+        assertEquals("client configs include security.protocol",
+            "PLAINTEXT", adminProps.get("security.protocol"));
+        assertEquals("producer configs include security.protocol",
+            "SASL", clientConfig.producerConfig().get("security.protocol"));
+        assertFalse("unknown properties aren't included in client configs",
+            adminProps.containsKey("xxx"));
     }
 
 
@@ -110,4 +121,30 @@ public class MirrorMakerConfigTest {
         assertEquals("source->target.topics.blacklist should be passed through to TopicFilters.",
             Arrays.asList("topic3"), filterConfig.getList("topics.blacklist"));
     }
+
+    @Test
+    public void testIncludesReplicationFactor() {
+        MirrorMakerConfig mirrorConfig = new MirrorMakerConfig(makeProps(
+            "clusters", "a, b",
+            "replication.factor", "123",
+            "b.replication.factor", "456",
+            "session.timeout.ms", "789",
+            "xxx", "yyy"));
+        SourceAndTarget a = new SourceAndTarget("b", "a");
+        SourceAndTarget b = new SourceAndTarget("a", "b");
+        Map<String, String> aProps = mirrorConfig.workerConfig(a);
+        assertEquals("123", aProps.get("offset.storage.replication.factor"));
+        assertEquals("123", aProps.get("status.storage.replication.factor"));
+        assertEquals("123", aProps.get("config.storage.replication.factor"));
+        Map<String, String> bProps = mirrorConfig.workerConfig(b);
+        assertEquals("456", bProps.get("offset.storage.replication.factor"));
+        assertEquals("456", bProps.get("status.storage.replication.factor"));
+        assertEquals("456", bProps.get("config.storage.replication.factor"));
+        assertEquals("internal worker values should be passed through to worker config",
+            "789", bProps.get("session.timeout.ms"));
+        assertFalse("uknown properties should not be passed through to worker config",
+            bProps.containsKey("xxx"));
+ 
+    }
+
 }

@@ -1675,6 +1675,7 @@ project(':connect:mirror-client') {
 
   dependencies {
     compile project(':clients')
+    compile project(':connect:runtime')
     compile libs.slf4jApi
 
     testCompile libs.junit
