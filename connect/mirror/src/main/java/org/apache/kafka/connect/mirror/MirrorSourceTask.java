@@ -101,11 +101,12 @@ public class MirrorSourceTask extends SourceTask {
 
     @Override
     public void stop() {
-        new Thread(() -> cleanup(lock, consumer, outstandingOffsetSyncs, pollTimeout, offsetProducer)).start();
+        new Thread(() -> cleanup(lock, consumer, outstandingOffsetSyncs, pollTimeout, offsetProducer, metrics))
+            .start();
     }
 
     private static void cleanup(ReentrantLock lock, KafkaConsumer consumer, Semaphore outstandingOffsetSyncs,
-            Duration pollTimeout, KafkaProducer offsetProducer) {
+            Duration pollTimeout, KafkaProducer offsetProducer, MirrorMetrics metrics) {
         lock.lock();
         try {
             consumer.close();
@@ -115,6 +116,7 @@ public class MirrorSourceTask extends SourceTask {
                 log.warn("Timed out waiting for outstanding offset syncs.");
             }
             offsetProducer.close();
+            metrics.close();
         } catch (InterruptedException e) {
             log.info("Interrupted waiting for outstanding offset syncs.");
         } finally {
