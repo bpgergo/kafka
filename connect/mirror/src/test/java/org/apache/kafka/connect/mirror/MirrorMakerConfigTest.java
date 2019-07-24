@@ -91,7 +91,6 @@ public class MirrorMakerConfigTest {
             adminProps.containsKey("xxx"));
     }
 
-
     @Test
     public void testIncludesConnectorConfigProperties() {
         MirrorMakerConfig mirrorConfig = new MirrorMakerConfig(makeProps(
@@ -123,13 +122,12 @@ public class MirrorMakerConfigTest {
     }
 
     @Test
-    public void testIncludesReplicationFactor() {
+    public void testWorkerConfigs() {
         MirrorMakerConfig mirrorConfig = new MirrorMakerConfig(makeProps(
             "clusters", "a, b",
             "replication.factor", "123",
             "b.replication.factor", "456",
-            "session.timeout.ms", "789",
-            "xxx", "yyy"));
+            "b.producer.client.id", "client-one"));
         SourceAndTarget a = new SourceAndTarget("b", "a");
         SourceAndTarget b = new SourceAndTarget("a", "b");
         Map<String, String> aProps = mirrorConfig.workerConfig(a);
@@ -140,11 +138,8 @@ public class MirrorMakerConfigTest {
         assertEquals("456", bProps.get("offset.storage.replication.factor"));
         assertEquals("456", bProps.get("status.storage.replication.factor"));
         assertEquals("456", bProps.get("config.storage.replication.factor"));
-        assertEquals("internal worker values should be passed through to worker config",
-            "789", bProps.get("session.timeout.ms"));
-        assertFalse("uknown properties should not be passed through to worker config",
-            bProps.containsKey("xxx"));
- 
+        assertEquals("producer props should be passed through to worker config: " + bProps,
+            "client-one", bProps.get("producer.client.id"));
     }
 
 }

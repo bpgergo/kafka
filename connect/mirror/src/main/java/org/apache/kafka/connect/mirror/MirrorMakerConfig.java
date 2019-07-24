@@ -20,9 +20,6 @@ import org.apache.kafka.common.config.AbstractConfig;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.common.config.ConfigDef.Importance;
-import org.apache.kafka.clients.CommonClientConfigs;
-import org.apache.kafka.connect.runtime.WorkerConfig;
-import org.apache.kafka.connect.runtime.distributed.DistributedConfig;
 
 import java.util.Map;
 import java.util.HashMap;
@@ -59,6 +56,19 @@ public class MirrorMakerConfig extends AbstractConfig {
     private static final String CONNECTOR_CLASS = "connector.class";
     private static final String SOURCE_CLUSTER_ALIAS = "source.cluster.alias";
     private static final String TARGET_CLUSTER_ALIAS = "target.cluster.alias";
+    private static final String GROUP_ID_CONFIG = "group.id";
+    private static final String OFFSET_STORAGE_TOPIC_CONFIG = "offset.storage.topic";
+    private static final String OFFSET_STORAGE_REPLICATION_FACTOR_CONFIG =
+            "offset.storage.replication.factor";
+    private static final String STATUS_STORAGE_TOPIC_CONFIG = "status.storage.topic";
+    private static final String STATUS_STORAGE_REPLICATION_FACTOR_CONFIG =
+            "status.storage.replication.factor";
+    private static final String CONFIG_TOPIC_CONFIG = "config.storage.topic";
+    private static final String CONFIG_STORAGE_REPLICATION_FACTOR_CONFIG =
+            "config.storage.replication.factor";
+    private static final String KEY_CONVERTER_CLASS_CONFIG = "key.converter";
+    private static final String VALUE_CONVERTER_CLASS_CONFIG = "value.converter";
+    private static final String HEADER_CONVERTER_CLASS_CONFIG = "header.converter";
     private static final String BYTE_ARRAY_CONVERTER_CLASS =
         "org.apache.kafka.connect.converters.ByteArrayConverter";
     private static final String REPLICATION_FACTOR = "replication.factor";
@@ -66,23 +76,7 @@ public class MirrorMakerConfig extends AbstractConfig {
 
     static final String SOURCE_CLUSTER_PREFIX = "source.cluster.";
     static final String TARGET_CLUSTER_PREFIX = "target.cluster.";
-    
-    // Properties passed to internal Kafka clients
-    static final ConfigDef CLIENT_CONFIG_DEF = new ConfigDef()
-        .define(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG,
-            Type.LIST,
-            null,
-            Importance.HIGH,
-            CommonClientConfigs.BOOTSTRAP_SERVERS_DOC)
-        // security support
-        .define(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG,
-            Type.STRING,
-            CommonClientConfigs.DEFAULT_SECURITY_PROTOCOL,
-            Importance.MEDIUM,
-            CommonClientConfigs.SECURITY_PROTOCOL_DOC)
-        .withClientSslSupport()
-        .withClientSaslSupport();
-
+   
     static final ConfigDef ENABLED_CONFIG_DEF = new ConfigDef()
         .define(ENABLED_CONFIG,
             Type.BOOLEAN,
@@ -129,62 +123,57 @@ public class MirrorMakerConfig extends AbstractConfig {
       */
     public MirrorClientConfig clientConfig(String cluster) {
         Map<String, String> props = new HashMap<>();
-        Map<String, String> strings = originalsStrings();
-        for (String k : MirrorClientConfig.CONFIG_DEF.names()) {
-            if (strings.containsKey(k)) {
-                props.put(k, strings.get(k));
-            }
-        }
+        props.putAll(originalsStrings());
         props.putAll(clusterProps(cluster));
         return new MirrorClientConfig(props);
     }
 
     // loads properties of the form cluster.x.y.z
     Map<String, String> clusterProps(String cluster) {
-        Map<String, Object> props = new HashMap<>();
+        Map<String, String> props = new HashMap<>();
+        props.putAll(toStrings(originalsWithPrefix(cluster + ".")));
 
-        // fill in consumer, producer, admin configs
-        props.putAll(sharedClientConfigs());
-
-        // override with cluster-level properties
-        props.putAll(originalsWithPrefix(cluster + "."));
-
-        return toStrings(props);
+        // expand client configs
+        for (String k : MirrorClientConfig.CLIENT_CONFIG_DEF.names()) {
+            String v = props.get(k);
+            if (v != null) {
+                props.putIfAbsent("producer." + k, v);
+                props.putIfAbsent("consumer." + k, v);
+                props.putIfAbsent("admin." + k, v);
+            }
+        }
+ 
+        return props;
     }
 
-    // loads worker configs based on properties of the form cluster.x.y.z 
+    // loads worker configs based on properties of the form x.y.z and cluster.x.y.z 
     Map<String, String> workerConfig(SourceAndTarget sourceAndTarget) {
         Map<String, String> props = new HashMap<>();
-
-        // fill in top-level worker properties
-        props.putAll(originalsStrings());
-
         props.putAll(clusterProps(sourceAndTarget.target()));
 
         // fill in reasonable defaults
-        props.putIfAbsent(DistributedConfig.GROUP_ID_CONFIG, sourceAndTarget.source() + "-mm2");
-        props.putIfAbsent(DistributedConfig.OFFSET_STORAGE_TOPIC_CONFIG, "mm2-offsets."
+        props.putIfAbsent(GROUP_ID_CONFIG, sourceAndTarget.source() + "-mm2");
+        props.putIfAbsent(OFFSET_STORAGE_TOPIC_CONFIG, "mm2-offsets."
                 + sourceAndTarget.source() + ".internal");
-        props.putIfAbsent(DistributedConfig.STATUS_STORAGE_TOPIC_CONFIG, "mm2-status."
+        props.putIfAbsent(STATUS_STORAGE_TOPIC_CONFIG, "mm2-status."
                 + sourceAndTarget.source() + ".internal");
-        props.putIfAbsent(DistributedConfig.CONFIG_TOPIC_CONFIG, "mm2-configs."
+        props.putIfAbsent(CONFIG_TOPIC_CONFIG, "mm2-configs."
                 + sourceAndTarget.source() + ".internal");
-        props.putIfAbsent(SOURCE_CLUSTER_ALIAS, sourceAndTarget.source());
-        props.putIfAbsent(TARGET_CLUSTER_ALIAS, sourceAndTarget.target());
-        props.putIfAbsent(WorkerConfig.KEY_CONVERTER_CLASS_CONFIG, BYTE_ARRAY_CONVERTER_CLASS); 
-        props.putIfAbsent(WorkerConfig.VALUE_CONVERTER_CLASS_CONFIG, BYTE_ARRAY_CONVERTER_CLASS); 
-        props.putIfAbsent(WorkerConfig.HEADER_CONVERTER_CLASS_CONFIG, BYTE_ARRAY_CONVERTER_CLASS);
+        props.putIfAbsent(KEY_CONVERTER_CLASS_CONFIG, BYTE_ARRAY_CONVERTER_CLASS); 
+        props.putIfAbsent(VALUE_CONVERTER_CLASS_CONFIG, BYTE_ARRAY_CONVERTER_CLASS); 
+        props.putIfAbsent(HEADER_CONVERTER_CLASS_CONFIG, BYTE_ARRAY_CONVERTER_CLASS);
 
         // default to internal.topic.replication.factor or replication.factor for internal Connect topics
-        String factor = props.getOrDefault(INTERNAL_TOPIC_REPLICATION_FACTOR, props.get(REPLICATION_FACTOR));
-        props.putIfAbsent(DistributedConfig.OFFSET_STORAGE_REPLICATION_FACTOR_CONFIG, factor);
-        props.putIfAbsent(DistributedConfig.CONFIG_STORAGE_REPLICATION_FACTOR_CONFIG, factor);
-        props.putIfAbsent(DistributedConfig.STATUS_STORAGE_REPLICATION_FACTOR_CONFIG, factor);
+        String replicationFactor = props.getOrDefault(REPLICATION_FACTOR,
+                originalsStrings().get(REPLICATION_FACTOR));
+        String internalReplicationFactor = props.getOrDefault(INTERNAL_TOPIC_REPLICATION_FACTOR,
+                replicationFactor);
+        if (internalReplicationFactor != null) {
+            props.putIfAbsent(OFFSET_STORAGE_REPLICATION_FACTOR_CONFIG, internalReplicationFactor);
+            props.putIfAbsent(CONFIG_STORAGE_REPLICATION_FACTOR_CONFIG, internalReplicationFactor);
+            props.putIfAbsent(STATUS_STORAGE_REPLICATION_FACTOR_CONFIG, internalReplicationFactor);
+        }
 
-        // parse the configs to filter for valid properties
-        DistributedConfig distributedConfig = new DistributedConfig(props);
-        props.keySet().retainAll(distributedConfig.values().keySet());
-        
         return props;
     }
 
@@ -193,6 +182,7 @@ public class MirrorMakerConfig extends AbstractConfig {
         Map<String, String> props = new HashMap<>();
 
         props.putAll(originalsStrings());
+        props.keySet().retainAll(MirrorConnectorConfig.CONNECTOR_CONFIG_DEF.names());
         
         props.putAll(withPrefix(SOURCE_CLUSTER_PREFIX, clusterProps(sourceAndTarget.source())));
         props.putAll(withPrefix(TARGET_CLUSTER_PREFIX, clusterProps(sourceAndTarget.target())));
@@ -228,21 +218,6 @@ public class MirrorMakerConfig extends AbstractConfig {
             copy.put(entry.getKey(), (String) entry.getValue());
         }
         return copy;
-    }
-
-    private Map<String, String> sharedClientConfigs() {
-        Map<String, String> clientConfig = new HashMap<>();
-        Map<String, String> values = originalsStrings();
-        for (String k : CLIENT_CONFIG_DEF.names()) {
-            String v = values.get(k);
-            if (v != null) {
-                clientConfig.put("producer." + k, v);
-                clientConfig.put("consumer." + k, v);
-                clientConfig.put("admin." + k, v);
-                clientConfig.put(k, v);
-            }
-        }
-        return clientConfig;
     }
 
     static Map<String, String> withPrefix(String prefix, Map<String, String> props) {
