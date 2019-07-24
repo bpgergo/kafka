@@ -193,7 +193,10 @@ public class MirrorMakerConfig extends AbstractConfig {
         props.putIfAbsent(TARGET_CLUSTER_ALIAS, sourceAndTarget.target());
 
         // default to replication.factor for internal MM2 topics
-        props.putIfAbsent(INTERNAL_TOPIC_REPLICATION_FACTOR, props.get(REPLICATION_FACTOR));
+        String replicationFactor = props.get(REPLICATION_FACTOR);
+        if (replicationFactor != null) {
+            props.putIfAbsent(INTERNAL_TOPIC_REPLICATION_FACTOR, replicationFactor);
+        }
 
         // override with connector-level properties
         props.putAll(toStrings(originalsWithPrefix(sourceAndTarget.source() + "->"

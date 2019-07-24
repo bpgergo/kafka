@@ -65,6 +65,7 @@ public class MirrorClientConfig extends AbstractConfig {
         Map<String, Object> props = new HashMap<>();
         props.putAll(valuesWithPrefixOverride(prefix));
         props.keySet().retainAll(CLIENT_CONFIG_DEF.names());
+        props.entrySet().removeIf(x -> x.getValue() == null);
         return props;
     }
 
