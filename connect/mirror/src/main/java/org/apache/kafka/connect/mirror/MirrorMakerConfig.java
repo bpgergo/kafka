@@ -50,9 +50,6 @@ public class MirrorMakerConfig extends AbstractConfig {
     public static final String CLUSTERS_CONFIG = "clusters";
     private static final String CLUSTERS_DOC = "List of cluster aliases.";
 
-    public static final String ENABLED_CONFIG = "enabled";
-    private static final String ENABLED_DOC = "Whether to replicate source->target.";
-
     private static final String NAME = "name";
     private static final String CONNECTOR_CLASS = "connector.class";
     private static final String SOURCE_CLUSTER_ALIAS = "source.cluster.alias";
@@ -78,25 +75,12 @@ public class MirrorMakerConfig extends AbstractConfig {
     static final String SOURCE_CLUSTER_PREFIX = "source.cluster.";
     static final String TARGET_CLUSTER_PREFIX = "target.cluster.";
    
-    static final ConfigDef ENABLED_CONFIG_DEF = new ConfigDef()
-        .define(ENABLED_CONFIG,
-            Type.BOOLEAN,
-            false,
-            Importance.HIGH,
-            ENABLED_DOC);
-
     public MirrorMakerConfig(Map<?, ?> props) {
         super(CONFIG_DEF, props);
     }
 
     public Set<String> clusters() {
         return new HashSet<>(getList(CLUSTERS_CONFIG));
-    }
-
-    public List<SourceAndTarget> enabledClusterPairs() {
-        return clusterPairs().stream()
-            .filter(this::enabled)
-            .collect(Collectors.toList());
     }
 
     public List<SourceAndTarget> clusterPairs() {
@@ -111,12 +95,6 @@ public class MirrorMakerConfig extends AbstractConfig {
             }
         }
         return pairs;
-    }
-
-    boolean enabled(SourceAndTarget sourceAndTarget) {
-        return new AbstractConfig(ENABLED_CONFIG_DEF, originalsWithPrefix(
-            sourceAndTarget.source() + "->" + sourceAndTarget.target() + "."), false)
-            .getBoolean(ENABLED_CONFIG);
     }
 
     /** Construct a MirrorClientConfig from properties of the form cluster.x.y.z.
@@ -144,7 +122,7 @@ public class MirrorMakerConfig extends AbstractConfig {
             }
         }
  
-        props.putAll(toStrings(originalsWithPrefix(cluster + ".")));
+        props.putAll(stringsWithPrefix(cluster + "."));
 
         for (String k : MirrorClientConfig.CLIENT_CONFIG_DEF.names()) {
             String v = props.get(k);
@@ -211,12 +189,8 @@ public class MirrorMakerConfig extends AbstractConfig {
         }
 
         // override with connector-level properties
-        props.putAll(toStrings(originalsWithPrefix(sourceAndTarget.source() + "->"
-            + sourceAndTarget.target() + ".")));
-
-        if (!enabled(sourceAndTarget)) {
-            props.put(ENABLED_CONFIG, "false");
-        }
+        props.putAll(stringsWithPrefix(sourceAndTarget.source() + "->"
+            + sourceAndTarget.target() + "."));
 
         return props;
     }
@@ -232,16 +206,11 @@ public class MirrorMakerConfig extends AbstractConfig {
             .withClientSslSupport()
             .withClientSaslSupport();
 
-    private static Map<String, String> toStrings(Map<String, ?> props) {
-        Map<String, String> copy = new HashMap<>();
-        for (Map.Entry<String, ?> entry : props.entrySet()) {
-            if (!(entry.getValue() instanceof String))
-                throw new ClassCastException("Non-string value found in original settings for key " + entry.getKey() +
-                        ": " + (entry.getValue() == null ? null : entry.getValue().getClass().getName()));
-            copy.put(entry.getKey(), (String) entry.getValue());
-        }
-        return copy;
-    }
+    private Map<String, String> stringsWithPrefix(String prefix) {
+        return originalsStrings().entrySet().stream()
+            .filter(x -> x.getKey().startsWith(prefix))
+            .collect(Collectors.toMap(x -> x.getKey().substring(prefix.length()), x -> x.getValue()));
+    } 
 
     static Map<String, String> withPrefix(String prefix, Map<String, String> props) {
         return props.entrySet().stream()

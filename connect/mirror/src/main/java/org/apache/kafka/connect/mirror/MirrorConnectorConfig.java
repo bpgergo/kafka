@@ -149,7 +149,7 @@ public class MirrorConnectorConfig extends AbstractConfig {
     }
 
     boolean enabled() {
-        return getBoolean(MirrorMakerConfig.ENABLED_CONFIG);
+        return getBoolean(ENABLED);
     }
 
     Duration consumerPollTimeout() {
