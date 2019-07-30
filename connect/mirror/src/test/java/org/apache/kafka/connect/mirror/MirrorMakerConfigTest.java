@@ -18,6 +18,7 @@ package org.apache.kafka.connect.mirror;
 
 import org.apache.kafka.connect.runtime.ConnectorConfig;
 import org.apache.kafka.connect.runtime.isolation.Plugins;
+import org.apache.kafka.common.config.types.Password;
 
 import org.junit.Test;
 
@@ -71,6 +72,7 @@ public class MirrorMakerConfigTest {
         MirrorMakerConfig mirrorConfig = new MirrorMakerConfig(makeProps(
             "clusters", "a, b",
             "replication.policy.separator", "__",
+            "ssl.truststore.password", "secret",
             "a.security.protocol", "PLAINTEXT", 
             "a.producer.security.protocol", "SASL", 
             "a.bootstrap.servers", "one:9092, two:9092", 
@@ -89,6 +91,10 @@ public class MirrorMakerConfigTest {
             "SASL", clientConfig.producerConfig().get("security.protocol"));
         assertFalse("unknown properties aren't included in client configs",
             adminProps.containsKey("xxx"));
+        assertEquals("security properties are picked up in MirrorClientConfig",
+            "secret", clientConfig.getPassword("ssl.truststore.password").value());
+        assertEquals("client configs include top-level security properties",
+            "secret", ((Password) adminProps.get("ssl.truststore.password")).value());
     }
 
     @Test
@@ -127,7 +133,10 @@ public class MirrorMakerConfigTest {
             "clusters", "a, b",
             "replication.factor", "123",
             "b.replication.factor", "456",
-            "b.producer.client.id", "client-one"));
+            "b.producer.client.id", "client-one",
+            "b.security.protocol", "PLAINTEXT",
+            "b.producer.security.protocol", "SASL",
+            "ssl.truststore.password", "secret"));
         SourceAndTarget a = new SourceAndTarget("b", "a");
         SourceAndTarget b = new SourceAndTarget("a", "b");
         Map<String, String> aProps = mirrorConfig.workerConfig(a);
@@ -138,8 +147,18 @@ public class MirrorMakerConfigTest {
         assertEquals("456", bProps.get("offset.storage.replication.factor"));
         assertEquals("456", bProps.get("status.storage.replication.factor"));
         assertEquals("456", bProps.get("config.storage.replication.factor"));
-        assertEquals("producer props should be passed through to worker config: " + bProps,
+        assertEquals("producer props should be passed through to worker producer config: " + bProps,
             "client-one", bProps.get("producer.client.id"));
+        assertEquals("replication-level security props should be passed through to worker producer config",
+            "SASL", bProps.get("producer.security.protocol"));
+        assertEquals("replication-level security props should be passed through to worker producer config",
+            "SASL", bProps.get("producer.security.protocol"));
+        assertEquals("replication-level security props should be passed through to worker consumer config",
+            "PLAINTEXT", bProps.get("consumer.security.protocol"));
+        assertEquals("security properties should be passed through to worker config: " + bProps,
+            "secret", bProps.get("ssl.truststore.password"));
+        assertEquals("security properties should be passed through to worker producer config: " + bProps,
+            "secret", bProps.get("producer.ssl.truststore.password"));
     }
 
 }

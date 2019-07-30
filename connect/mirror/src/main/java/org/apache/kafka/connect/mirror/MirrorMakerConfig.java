@@ -20,6 +20,7 @@ import org.apache.kafka.common.config.AbstractConfig;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.common.config.ConfigDef.Importance;
+import org.apache.kafka.clients.CommonClientConfigs;
 
 import java.util.Map;
 import java.util.HashMap;
@@ -131,9 +132,20 @@ public class MirrorMakerConfig extends AbstractConfig {
     // loads properties of the form cluster.x.y.z
     Map<String, String> clusterProps(String cluster) {
         Map<String, String> props = new HashMap<>();
+        Map<String, String> strings = originalsStrings();
+
+        for (String k : MirrorClientConfig.CLIENT_CONFIG_DEF.names()) {
+            String v = strings.get(k);
+            if (v != null) {
+                props.putIfAbsent("producer." + k, v);
+                props.putIfAbsent("consumer." + k, v);
+                props.putIfAbsent("admin." + k, v);
+                props.putIfAbsent(k, v);
+            }
+        }
+ 
         props.putAll(toStrings(originalsWithPrefix(cluster + ".")));
 
-        // expand client configs
         for (String k : MirrorClientConfig.CLIENT_CONFIG_DEF.names()) {
             String v = props.get(k);
             if (v != null) {
@@ -142,7 +154,7 @@ public class MirrorMakerConfig extends AbstractConfig {
                 props.putIfAbsent("admin." + k, v);
             }
         }
- 
+
         return props;
     }
 
@@ -210,7 +222,15 @@ public class MirrorMakerConfig extends AbstractConfig {
     }
 
     protected static final ConfigDef CONFIG_DEF = new ConfigDef()
-            .define(CLUSTERS_CONFIG, Type.LIST, Importance.HIGH, CLUSTERS_DOC);
+            .define(CLUSTERS_CONFIG, Type.LIST, Importance.HIGH, CLUSTERS_DOC)
+            // security support
+            .define(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG,
+                Type.STRING,
+                CommonClientConfigs.DEFAULT_SECURITY_PROTOCOL,
+                Importance.MEDIUM,
+                CommonClientConfigs.SECURITY_PROTOCOL_DOC)
+            .withClientSslSupport()
+            .withClientSaslSupport();
 
     private static Map<String, String> toStrings(Map<String, ?> props) {
         Map<String, String> copy = new HashMap<>();
