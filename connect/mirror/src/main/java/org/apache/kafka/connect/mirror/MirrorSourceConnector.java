@@ -99,8 +99,8 @@ public class MirrorSourceConnector extends SourceConnector {
             sourceAdminClient = AdminClient.create(config.sourceAdminConfig());
             targetAdminClient = AdminClient.create(config.targetAdminConfig());
         }
-        MirrorUtils.createTopic(config.offsetSyncsTopic(), (short) 1, config.internalTopicReplicationFactor(), config.sourceAdminConfig());
         scheduler = new Scheduler(MirrorSourceConnector.class);
+        scheduler.execute(this::createInternalTopics, "creating internal topics");
         scheduler.execute(this::loadTopicPartitions, "loading initial set of topic-partitions");
         scheduler.execute(this::createTopicPartitions, "creating downstream topic-partitions");
         scheduler.scheduleRepeating(this::syncTopicAcls, config.syncTopicAclsInterval(), "syncing topic ACLs");
@@ -361,5 +361,10 @@ public class MirrorSourceConnector extends SourceConnector {
 
     String formatRemoteTopic(String topic) {
         return replicationPolicy.formatRemoteTopic(sourceAndTarget.source(), topic);
+    }
+
+    private void createInternalTopics() {
+        MirrorUtils.createSinglePartitionTopic(config.offsetSyncsTopic(),
+            config.internalTopicReplicationFactor(), config.sourceAdminConfig());
     }
 }

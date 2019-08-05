@@ -140,7 +140,7 @@ public class MirrorSourceTask extends SourceTask {
                 sourceRecords.add(converted);
                 TopicPartition topicPartition = new TopicPartition(converted.topic(), converted.kafkaPartition());
                 metrics.recordAge(topicPartition, System.currentTimeMillis() - record.timestamp());
-                metrics.recordBytes(topicPartition, record.value().length);
+                metrics.recordBytes(topicPartition, byteSize(record.value()));
             }
             return sourceRecords;
         } finally {
@@ -228,6 +228,14 @@ public class MirrorSourceTask extends SourceTask {
 
     private String formatRemoteTopic(String topic) {
         return replicationPolicy.formatRemoteTopic(sourceClusterAlias, topic);
+    }
+
+    private static int byteSize(byte[] bytes) {
+        if (bytes == null) {
+            return 0;
+        } else {
+            return bytes.length;
+        }
     }
 
     static class PartitionState {
