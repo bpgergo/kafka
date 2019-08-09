@@ -102,7 +102,12 @@ public class MirrorMakerConfig extends AbstractConfig {
       */
     public MirrorClientConfig clientConfig(String cluster) {
         Map<String, String> props = new HashMap<>();
-        props.putAll(originalsStrings());
+        Map<String, String> strings = originalsStrings();
+        for (String k : MirrorClientConfig.CONFIG_DEF.names()) {
+            if (strings.containsKey(k)) {
+                props.put(k, strings.get(k));
+            }
+        }
         props.putAll(clusterProps(cluster));
         return new MirrorClientConfig(props);
     }
@@ -112,7 +117,18 @@ public class MirrorMakerConfig extends AbstractConfig {
         Map<String, String> props = new HashMap<>();
         Map<String, String> strings = originalsStrings();
 
-        for (String k : MirrorClientConfig.CLIENT_CONFIG_DEF.names()) {
+        props.putAll(stringsWithPrefix(cluster + "."));
+
+        for (String k : MirrorClientConfig.CONFIG_DEF.names()) {
+            String v = props.get(k);
+            if (v != null) {
+                props.putIfAbsent("producer." + k, v);
+                props.putIfAbsent("consumer." + k, v);
+                props.putIfAbsent("admin." + k, v);
+            }
+        }
+
+        for (String k : MirrorClientConfig.CONFIG_DEF.names()) {
             String v = strings.get(k);
             if (v != null) {
                 props.putIfAbsent("producer." + k, v);
@@ -122,17 +138,6 @@ public class MirrorMakerConfig extends AbstractConfig {
             }
         }
  
-        props.putAll(stringsWithPrefix(cluster + "."));
-
-        for (String k : MirrorClientConfig.CLIENT_CONFIG_DEF.names()) {
-            String v = props.get(k);
-            if (v != null) {
-                props.putIfAbsent("producer." + k, v);
-                props.putIfAbsent("consumer." + k, v);
-                props.putIfAbsent("admin." + k, v);
-            }
-        }
-
         return props;
     }
 

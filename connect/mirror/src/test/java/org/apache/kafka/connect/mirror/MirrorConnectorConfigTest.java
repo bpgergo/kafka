@@ -106,4 +106,15 @@ public class MirrorConnectorConfigTest {
         assertTrue(config.topicFilter().shouldReplicateTopic("topic2"));
         assertFalse(config.topicFilter().shouldReplicateTopic("topic3"));
     }
+
+    @Test
+    public void testInternalClients() {
+        MirrorConnectorConfig config = new MirrorConnectorConfig(makeProps(
+            "source.cluster.ssl.truststore.password", "secret1",
+            "target.cluster.ssl.truststore.password", "secret2"));
+        assertEquals("security properties should be passed to source consumer",
+            "secret1", config.sourceConsumerConfig().get("ssl.truststore.password"));
+        assertEquals("security properties should be passed to source producer",
+            "secret1", config.sourceProducerConfig().get("ssl.truststore.password"));
+    }
 }

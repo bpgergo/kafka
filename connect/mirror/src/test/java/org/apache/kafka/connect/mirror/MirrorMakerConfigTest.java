@@ -45,6 +45,7 @@ public class MirrorMakerConfigTest {
             "clusters", "a, b",
             "a.bootstrap.servers", "servers-one",
             "b.bootstrap.servers", "servers-two",
+            "security.protocol", "SASL",
             "replication.factor", "4"));
         Map<String, String> connectorProps = mirrorConfig.connectorBaseConfig(new SourceAndTarget("a", "b"),
             MirrorSourceConnector.class);
@@ -54,6 +55,8 @@ public class MirrorMakerConfigTest {
             "servers-two", connectorProps.get("target.cluster.bootstrap.servers"));
         assertEquals("internal.topic.replication.factor is set based on replication.factor",
             "4", connectorProps.get("internal.topic.replication.factor"));
+        assertEquals("top-level security.protocol is passed through to connector config",
+            "SASL", connectorProps.get("security.protocol"));
     }
 
     @Test
@@ -73,28 +76,34 @@ public class MirrorMakerConfigTest {
             "clusters", "a, b",
             "replication.policy.separator", "__",
             "ssl.truststore.password", "secret",
+            "security.protocol", "SSL", 
             "a.security.protocol", "PLAINTEXT", 
             "a.producer.security.protocol", "SASL", 
             "a.bootstrap.servers", "one:9092, two:9092", 
-            "a.xxx", "yyy"));
-        MirrorClientConfig clientConfig = mirrorConfig.clientConfig("a");
+            "a.xxx", "yyy",
+            "xxx", "zzz"));
+        MirrorClientConfig aClientConfig = mirrorConfig.clientConfig("a");
+        MirrorClientConfig bClientConfig = mirrorConfig.clientConfig("b");
         assertEquals("replication.policy.separator is picked up in MirrorClientConfig",
-            "__", clientConfig.getString("replication.policy.separator"));
+            "__", aClientConfig.getString("replication.policy.separator"));
         assertEquals("replication.policy.separator is honored",
-            "b__topic1", clientConfig.replicationPolicy().formatRemoteTopic("b", "topic1"));
-        Map<String, Object> adminProps = clientConfig.adminConfig();
+            "b__topic1", aClientConfig.replicationPolicy().formatRemoteTopic("b", "topic1"));
         assertEquals("client configs include boostrap.servers",
-            "one:9092, two:9092", adminProps.get("bootstrap.servers"));
-        assertEquals("client configs include security.protocol",
-            "PLAINTEXT", adminProps.get("security.protocol"));
+            "one:9092, two:9092", aClientConfig.adminConfig().get("bootstrap.servers"));
         assertEquals("producer configs include security.protocol",
-            "SASL", clientConfig.producerConfig().get("security.protocol"));
+            "SASL", aClientConfig.producerConfig().get("security.protocol"));
+        assertEquals("consumer configs include security.protocol",
+            "SSL", bClientConfig.consumerConfig().get("security.protocol"));
+        assertEquals("client configs include security.protocol: " + aClientConfig.originalsStrings(),
+            "PLAINTEXT", aClientConfig.adminConfig().get("security.protocol"));
+        assertEquals("client configs include security.protocol: " + aClientConfig.originalsStrings(),
+            "SSL", bClientConfig.adminConfig().get("security.protocol"));
         assertFalse("unknown properties aren't included in client configs",
-            adminProps.containsKey("xxx"));
+            aClientConfig.adminConfig().containsKey("xxx"));
         assertEquals("security properties are picked up in MirrorClientConfig",
-            "secret", clientConfig.getPassword("ssl.truststore.password").value());
+            "secret", aClientConfig.getPassword("ssl.truststore.password").value());
         assertEquals("client configs include top-level security properties",
-            "secret", ((Password) adminProps.get("ssl.truststore.password")).value());
+            "secret", ((Password) aClientConfig.adminConfig().get("ssl.truststore.password")).value());
     }
 
     @Test
@@ -136,29 +145,30 @@ public class MirrorMakerConfigTest {
             "b.producer.client.id", "client-one",
             "b.security.protocol", "PLAINTEXT",
             "b.producer.security.protocol", "SASL",
-            "ssl.truststore.password", "secret"));
+            "ssl.truststore.password", "secret",
+            "b.xxx", "yyy"));
         SourceAndTarget a = new SourceAndTarget("b", "a");
         SourceAndTarget b = new SourceAndTarget("a", "b");
         Map<String, String> aProps = mirrorConfig.workerConfig(a);
+        Map<String, String> bProps = mirrorConfig.workerConfig(b);
         assertEquals("123", aProps.get("offset.storage.replication.factor"));
         assertEquals("123", aProps.get("status.storage.replication.factor"));
         assertEquals("123", aProps.get("config.storage.replication.factor"));
-        Map<String, String> bProps = mirrorConfig.workerConfig(b);
         assertEquals("456", bProps.get("offset.storage.replication.factor"));
         assertEquals("456", bProps.get("status.storage.replication.factor"));
         assertEquals("456", bProps.get("config.storage.replication.factor"));
         assertEquals("producer props should be passed through to worker producer config: " + bProps,
             "client-one", bProps.get("producer.client.id"));
-        assertEquals("replication-level security props should be passed through to worker producer config",
+        assertEquals("cluster-level security props should be passed through to worker producer config",
             "SASL", bProps.get("producer.security.protocol"));
-        assertEquals("replication-level security props should be passed through to worker producer config",
-            "SASL", bProps.get("producer.security.protocol"));
-        assertEquals("replication-level security props should be passed through to worker consumer config",
+        assertEquals("cluster-level security props should be passed through to worker consumer config",
             "PLAINTEXT", bProps.get("consumer.security.protocol"));
         assertEquals("security properties should be passed through to worker config: " + bProps,
             "secret", bProps.get("ssl.truststore.password"));
         assertEquals("security properties should be passed through to worker producer config: " + bProps,
             "secret", bProps.get("producer.ssl.truststore.password"));
+        assertFalse("unknown properties aren't included in the client configs",
+            bProps.containsKey("producer.xxx"));
     }
 
 }
