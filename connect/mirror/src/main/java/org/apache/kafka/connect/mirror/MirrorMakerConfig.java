@@ -197,6 +197,9 @@ public class MirrorMakerConfig extends AbstractConfig {
         props.putAll(stringsWithPrefix(sourceAndTarget.source() + "->"
             + sourceAndTarget.target() + "."));
 
+        // disabled by default
+        props.putIfAbsent(MirrorConnectorConfig.ENABLED, "false");
+
         return props;
     }
 
