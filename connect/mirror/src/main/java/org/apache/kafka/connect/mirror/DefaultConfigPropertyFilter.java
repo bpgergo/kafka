@@ -36,8 +36,8 @@ public class DefaultConfigPropertyFilter implements ConfigPropertyFilter {
         + "message\\.timestamp\\.type, "
         + "unclean\\.leader\\.election\\.enable, "
         + "min\\.insync\\.replicas";
-
-    private Pattern blacklistPattern;
+    
+    private Pattern blacklistPattern = MirrorUtils.compilePatternList(CONFIG_PROPERTIES_BLACKLIST_DEFAULT);
 
     @Override
     public void configure(Map<String, ?> props) {
