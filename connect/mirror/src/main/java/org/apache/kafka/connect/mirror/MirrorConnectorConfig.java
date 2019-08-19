@@ -71,6 +71,10 @@ public class MirrorConnectorConfig extends AbstractConfig {
     private static final String CONSUMER_POLL_TIMEOUT_MILLIS_DOC = "Timeout when polling source cluster.";
     public static final long CONSUMER_POLL_TIMEOUT_MILLIS_DEFAULT = 1000L;
 
+    public static final String ADMIN_TASK_TIMEOUT_MILLIS = "admin.timeout.ms";
+    private static final String ADMIN_TASK_TIMEOUT_MILLIS_DOC = "Timeout for administrative tasks, e.g. detecting new topics.";
+    public static final long ADMIN_TASK_TIMEOUT_MILLIS_DEFAULT = 60000L;
+
     public static final String REFRESH_TOPICS_ENABLED = REFRESH_TOPICS + ENABLED_SUFFIX;
     private static final String REFRESH_TOPICS_ENABLED_DOC = "Whether to periodically check for new topics and partitions.";
     public static final boolean REFRESH_TOPICS_ENABLED_DEFAULT = true;
@@ -154,6 +158,10 @@ public class MirrorConnectorConfig extends AbstractConfig {
 
     Duration consumerPollTimeout() {
         return Duration.ofMillis(getLong(CONSUMER_POLL_TIMEOUT_MILLIS));
+    }
+
+    Duration adminTimeout() {
+        return Duration.ofMillis(getLong(ADMIN_TASK_TIMEOUT_MILLIS));
     }
 
     Map<String, Object> sourceProducerConfig() {
@@ -364,6 +372,12 @@ public class MirrorConnectorConfig extends AbstractConfig {
                     CONSUMER_POLL_TIMEOUT_MILLIS_DEFAULT,
                     ConfigDef.Importance.LOW,
                     CONSUMER_POLL_TIMEOUT_MILLIS_DOC)
+            .define(
+                    ADMIN_TASK_TIMEOUT_MILLIS,
+                    ConfigDef.Type.LONG,
+                    ADMIN_TASK_TIMEOUT_MILLIS_DEFAULT,
+                    ConfigDef.Importance.LOW,
+                    ADMIN_TASK_TIMEOUT_MILLIS_DOC)
             .define(
                     REFRESH_TOPICS_ENABLED,
                     ConfigDef.Type.BOOLEAN,
