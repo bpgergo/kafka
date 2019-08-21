@@ -23,7 +23,10 @@ import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigResource;
 import org.apache.kafka.common.acl.AclBinding;
 import org.apache.kafka.common.acl.AclBindingFilter;
+import org.apache.kafka.common.acl.AccessControlEntry;
 import org.apache.kafka.common.acl.AccessControlEntryFilter;
+import org.apache.kafka.common.acl.AclPermissionType;
+import org.apache.kafka.common.acl.AclOperation;
 import org.apache.kafka.common.resource.ResourceType;
 import org.apache.kafka.common.resource.ResourcePattern;
 import org.apache.kafka.common.resource.ResourcePatternFilter;
@@ -225,6 +228,10 @@ public class MirrorSourceConnector extends SourceConnector {
         updateTopicConfigs(targetConfigs);
     }
 
+    private void createOffsetSyncsTopic() {
+        MirrorUtils.createTopic(config.offsetSyncsTopic(), (short) 1, config.internalTopicReplicationFactor(), config.sourceAdminConfig());
+    }
+
     private void createTopicPartitions()
             throws InterruptedException, ExecutionException {
         Map<String, Long> partitionCounts = knownTopicPartitions.stream()
@@ -270,6 +277,8 @@ public class MirrorSourceConnector extends SourceConnector {
         return sourceAdminClient.describeTopics(topics).all().get().values();
     }
 
+    @SuppressWarnings("deprecation")
+    // use deprecated alterConfigs API for broker compatibility back to 0.11.0
     private void updateTopicConfigs(Map<String, Config> topicConfigs)
             throws InterruptedException, ExecutionException {
         Map<ConfigResource, Config> configs = topicConfigs.entrySet().stream()
@@ -366,10 +375,5 @@ public class MirrorSourceConnector extends SourceConnector {
 
     String formatRemoteTopic(String topic) {
         return replicationPolicy.formatRemoteTopic(sourceAndTarget.source(), topic);
-    }
-
-    private void createInternalTopics() {
-        MirrorUtils.createSinglePartitionTopic(config.offsetSyncsTopic(),
-            config.internalTopicReplicationFactor(), config.sourceAdminConfig());
     }
 }
