@@ -64,11 +64,27 @@ public class MirrorClientConfig extends AbstractConfig {
     private Map<String, Object> clientConfig(String prefix) {
         Map<String, Object> props = new HashMap<>();
         props.putAll(valuesWithPrefixOverride(prefix));
-        props.keySet().retainAll(CONFIG_DEF.names());
+        props.keySet().retainAll(CLIENT_CONFIG_DEF.names());
         props.entrySet().removeIf(x -> x.getValue() == null);
         return props;
     }
 
+    // Properties passed to internal Kafka clients
+    static final ConfigDef CLIENT_CONFIG_DEF = new ConfigDef()
+        .define(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG,
+            Type.LIST,
+            null,
+            Importance.HIGH,
+            CommonClientConfigs.BOOTSTRAP_SERVERS_DOC)
+        // security support
+        .define(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG,
+            Type.STRING,
+            CommonClientConfigs.DEFAULT_SECURITY_PROTOCOL,
+            Importance.MEDIUM,
+            CommonClientConfigs.SECURITY_PROTOCOL_DOC)
+        .withClientSslSupport()
+        .withClientSaslSupport();
+ 
     static final ConfigDef CONFIG_DEF = new ConfigDef()
         .define(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG,
             Type.STRING,
