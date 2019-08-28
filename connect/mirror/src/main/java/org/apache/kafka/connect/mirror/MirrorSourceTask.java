@@ -152,7 +152,8 @@ public class MirrorSourceTask extends SourceTask {
             return null;
         } catch (Throwable e) {
             log.error("Failure during poll.", e);
-            return null;
+            // allow Connect to deal with the exception
+            throw e;
         } finally {
             lock.unlock();
         }
