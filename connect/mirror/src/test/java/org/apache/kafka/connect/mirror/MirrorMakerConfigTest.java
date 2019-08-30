@@ -202,7 +202,7 @@ public class MirrorMakerConfigTest {
         assertEquals("security properties should be passed through to worker producer config: " + bProps,
             "secret1", bProps.get("producer.ssl.truststore.password"));
         assertEquals("security properties should be transformed in worker config",
-            "secret2", bProps.get("ssl.ke.password"));
+            "secret2", bProps.get("ssl.key.password"));
         assertEquals("security properties should be transformed in worker producer config",
             "secret2", bProps.get("producer.ssl.key.password"));
     }
