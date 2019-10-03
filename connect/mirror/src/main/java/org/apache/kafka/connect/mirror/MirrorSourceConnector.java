@@ -55,6 +55,10 @@ import java.util.concurrent.ExecutionException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/** Replicate data, configuration, and ACLs between clusters.
+ *
+ *  @see MirrorConnectorConfig for supported config properties.
+ */
 public class MirrorSourceConnector extends SourceConnector {
 
     private static final Logger log = LoggerFactory.getLogger(MirrorSourceConnector.class);
@@ -104,9 +108,10 @@ public class MirrorSourceConnector extends SourceConnector {
         sourceAdminClient = AdminClient.create(config.sourceAdminConfig());
         targetAdminClient = AdminClient.create(config.targetAdminConfig());
         scheduler = new Scheduler(MirrorSourceConnector.class, config.adminTimeout());
-        scheduler.execute(this::createOffsetSyncsTopic, "creating upstream offset-syncs topic");
-        scheduler.execute(this::loadTopicPartitions, "loading initial set of topic-partitions");
-        scheduler.execute(this::createTopicPartitions, "creating downstream topic-partitions");
+        scheduler.executeUntilSuccess(this::createOffsetSyncsTopic, "creating upstream offset-syncs topic");
+        scheduler.executeUntilSuccess(this::loadTopicPartitions, "loading initial set of topic-partitions");
+        scheduler.executeUntilSuccess(this::createTopicPartitions, "creating downstream topic-partitions");
+        scheduler.executeUntilSuccess(this::refreshKnownTargetTopics, "refreshing known target topics");
         scheduler.scheduleRepeating(this::syncTopicAcls, config.syncTopicAclsInterval(), "syncing topic ACLs");
         scheduler.scheduleRepeating(this::syncTopicConfigs, config.syncTopicConfigsInterval(),
             "syncing topic configs");
@@ -194,6 +199,11 @@ public class MirrorSourceConnector extends SourceConnector {
         knownTargetTopics = findExistingTargetTopics(); 
     }
 
+    private void refreshKnownTargetTopics()
+            throws InterruptedException, ExecutionException {
+        knownTargetTopics = findExistingTargetTopics();
+    }
+
     private Set<String> findExistingTargetTopics()
             throws InterruptedException, ExecutionException {
         return listTopics(targetAdminClient).stream()
@@ -230,7 +240,7 @@ public class MirrorSourceConnector extends SourceConnector {
     }
 
     private void createOffsetSyncsTopic() {
-        MirrorUtils.createTopic(config.offsetSyncsTopic(), (short) 1, config.offsetSyncsTopicReplicationFactor(), config.sourceAdminConfig());
+        MirrorUtils.createSinglePartitionCompactedTopic(config.offsetSyncsTopic(), config.offsetSyncsTopicReplicationFactor(), config.sourceAdminConfig());
     }
 
     private void createTopicPartitions()

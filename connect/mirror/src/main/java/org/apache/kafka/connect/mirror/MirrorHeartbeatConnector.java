@@ -25,7 +25,8 @@ import java.util.Map;
 import java.util.List;
 import java.util.Collections;
 
-
+/** Emits heartbeats to Kafka.
+ */
 public class MirrorHeartbeatConnector extends SourceConnector {
     private MirrorConnectorConfig config;
     private Scheduler scheduler;
@@ -34,7 +35,7 @@ public class MirrorHeartbeatConnector extends SourceConnector {
     public void start(Map<String, String> props) {
         config = new MirrorConnectorConfig(props);
         scheduler = new Scheduler(MirrorHeartbeatConnector.class, config.adminTimeout());
-        scheduler.execute(this::createInternalTopics, "creating internal topics");
+        scheduler.executeUntilSuccess(this::createInternalTopics, "creating internal topics");
     }
 
     @Override
@@ -64,7 +65,7 @@ public class MirrorHeartbeatConnector extends SourceConnector {
     }
 
     private void createInternalTopics() {
-        MirrorUtils.createSinglePartitionTopic(config.heartbeatsTopic(),
+        MirrorUtils.createSinglePartitionCompactedTopic(config.heartbeatsTopic(),
             config.heartbeatsTopicReplicationFactor(), config.targetAdminConfig());
     }
 }
