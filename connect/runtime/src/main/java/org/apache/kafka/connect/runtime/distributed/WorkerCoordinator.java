@@ -39,6 +39,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * This class manages the coordination process with the Kafka group coordinator on the broker for managing assignments
@@ -315,6 +316,15 @@ public final class WorkerCoordinator extends AbstractCoordinator implements Clos
         if (rejoinNeededOrPending() || !isLeader())
             return null;
         return leaderState.ownerUrl(task);
+    }
+
+    /**
+     * @return deep copy of leaderState.allMembers.
+     */
+    public Map<String, ConnectProtocol.WorkerState> allMembers() {
+        return leaderState.allMembers.entrySet().stream()
+                .collect(Collectors.toMap(Map.Entry::getKey,
+                        x -> (new ConnectProtocol.WorkerState(x.getValue().url(), x.getValue().offset()))));
     }
 
     private class WorkerCoordinatorMetrics {

@@ -183,6 +183,10 @@ public class WorkerGroupMember {
         return coordinator.memberId();
     }
 
+    public Map<String, ConnectProtocol.WorkerState> allMembers() {
+        return coordinator.allMembers();
+    }
+
     public void requestRejoin() {
         coordinator.requestRejoin();
     }

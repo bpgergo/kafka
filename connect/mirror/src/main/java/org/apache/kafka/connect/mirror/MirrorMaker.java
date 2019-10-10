@@ -177,8 +177,11 @@ public class MirrorMaker {
     private void configureConnector(SourceAndTarget sourceAndTarget, Class connectorClass) {
         checkHerder(sourceAndTarget);
         Map<String, String> connectorProps = config.connectorBaseConfig(sourceAndTarget, connectorClass);
-        herders.get(sourceAndTarget)
-                .putConnectorConfig(connectorClass.getSimpleName(), connectorProps, true, (e, x) -> {
+        Herder herder = herders.get(sourceAndTarget);
+        if (herder instanceof DistributedHerder){
+            connectorProps = config.adjustTasksMax(connectorProps, ((DistributedHerder)herder).members().size());
+        }
+        herder.putConnectorConfig(connectorClass.getSimpleName(), connectorProps, true, (e, x) -> {
                     if (e instanceof NotLeaderException) {
                         // No way to determine if the connector is a leader or not beforehand.
                         log.info("Connector {} is a follower. Using existing configuration.", sourceAndTarget);

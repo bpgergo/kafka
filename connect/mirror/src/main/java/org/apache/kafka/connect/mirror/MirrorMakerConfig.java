@@ -37,6 +37,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.stream.Collectors;
 
+import static org.apache.kafka.connect.runtime.ConnectorConfig.TASKS_MAX_CONFIG;
+
 /** Top-level config describing replication flows between multiple Kafka clusters.
  *
  *  Supports cluster-level properties of the form cluster.x.y.z, and replication-level
@@ -171,6 +173,18 @@ public class MirrorMakerConfig extends AbstractConfig {
         props.putIfAbsent(VALUE_CONVERTER_CLASS_CONFIG, BYTE_ARRAY_CONVERTER_CLASS); 
         props.putIfAbsent(HEADER_CONVERTER_CLASS_CONFIG, BYTE_ARRAY_CONVERTER_CLASS);
 
+        return props;
+    }
+
+    /**
+     * Adjust tasks max when the number of nodes in the connect cluster is larger then the configured value.
+     */
+    Map<String, String> adjustTasksMax(Map<String, String> originalProps, Integer memberCount){
+        Map<String, String> props = new HashMap<>();
+        props.putAll(originalProps);
+        if (memberCount != null && props.containsKey(TASKS_MAX_CONFIG)) {
+            props.put(TASKS_MAX_CONFIG, String.valueOf(Math.min(memberCount, Integer.valueOf(props.get(TASKS_MAX_CONFIG)))));
+        }
         return props;
     }
 

@@ -727,6 +727,10 @@ public class DistributedHerder extends AbstractHerder implements Runnable {
         return assignment != null && member.memberId().equals(assignment.leader());
     }
 
+    public Map<String, ConnectProtocol.WorkerState> members() {
+        return member.allMembers();
+    }
+
     /**
      * Get the URL for the leader's REST interface, or null if we do not have the leader's URL yet.
      */
